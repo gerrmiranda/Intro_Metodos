@@ -19,5 +19,8 @@ library(janitor)
 ```
 ```{r}
 loans_full_schema
+
+##Geom bar --> funciona para frecuencias
+##Geom cols --> funciona para graficar columnas
 ```
 
