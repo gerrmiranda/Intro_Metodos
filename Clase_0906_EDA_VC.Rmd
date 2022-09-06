@@ -15,5 +15,9 @@ Cargamos los **paquetes** que vamos a usar
 
 ```{r}
 library(tidyverse)
+library(janitor)
+```
+```{r}
+loans_full_schema
 ```
 
