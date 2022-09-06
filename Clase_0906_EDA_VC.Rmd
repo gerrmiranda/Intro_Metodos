@@ -1,0 +1,19 @@
+---
+title: "EDA-Variables Categoricas"
+author: "Germán Miranda"
+date: "2022-09-06"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Preparación de Entorno de Trabajo
+
+Cargamos los **paquetes** que vamos a usar
+
+```{r}
+library(tidyverse)
+```
+
