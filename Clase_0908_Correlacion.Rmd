@@ -1,0 +1,39 @@
+---
+title: "Clase_0908_Correlacion"
+author: "Germán Miranda"
+date: "2022-09-08"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+install.packages("plotly")
+library(tidymodels)
+library(here)
+library(readxl)
+library(tidyverse)
+library(plotly)
+
+df=read_xlsx(here("Datasets","empresas.xlsx"))
+
+df=df %>% mutate(actividad=factor(actividad))
+
+
+grafico = df %>% ggplot() + geom_point(aes(x=empleados,y=rem,fill=actividad))
+
+ggplotly(grafico)
+
+# CALCULAMOS CORRELACION LINEAL PARA TODAS LAS ACTIVIDADES
+
+df %>% summarise(correlacion=cor(rem,empleados))
+
+# CALCULAMOS CORRELACION LINEAL PARA CADA UNA DE LAS ACTIVIDADES
+
+df %>% group_by(actividad)  %>% summarise(correlacion=cor(rem,empleados),
+          cantidad_datos=n())
+```
+
