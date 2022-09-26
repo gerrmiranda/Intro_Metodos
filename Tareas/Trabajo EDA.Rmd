@@ -1,0 +1,138 @@
+---
+title: "Trabajo EDA"
+author: "Grupo 1"
+date: "2022-09-25"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Análisis exploratorio de datos
+
+## Explorando la base de datos
+
+Para la realización del siguiente trabajo, hemos elegido emplear un dataset sobre episodios de la serie televisiva "Game of Thrones" que hemos extrído desde la siguiente dirección: https://www.kaggle.com/datasets/rezaghari/game-of-thrones . Esta base de datos refiere a información extraída principalmente del sitio IMBD a partir de webscrapping.
+
+```{r message=FALSE, warning=FALSE}
+#Primero seteamos el directorio de trabajo
+setwd("D:/Users/MARTIN BOTTA/Desktop")
+
+#Ahora cargamos el archivo
+df = read.csv("GOT_episodes_v4.csv")
+
+#Seteamos las bibliotecas que emplearemos
+library(tidyverse)
+
+#Luego, damos un vistazo a la estructura de los datos
+library(dplyr)
+library(tinytex)
+
+glimpse(df)
+```
+Esta base de datos tiene 18 variables con 73 observaciones. Los tipos de variables que se encuentran son: interger, character y double. Así vemos que la base de datos cumple con los requisitos solicitados para su análisis.
+
+De esta forma, podemos clasificar cada tipo de variable en numérica o categórica:
+  Season: numérica discreta
+  Episode: numérica discreta
+  Title: categórica nominal
+  Release_date: numérica discreta
+  Rating: numérica continua
+  Votes: numérica continua
+  Summary: categórica nominal
+  Writer_1 y Writer_ 2: categórica nominal
+  Star_1, Star_2 y Star_3: categórica nominal
+  User_reviews: numérica continua
+  Critics_reviews: numérica continua
+  US_Viewers: numérica continua
+  Duration: numérica continua
+  Director: categórica nominal
+  Budget_estimate: numérica continua
+  
+Al verificar que existen variables de tipo character, procedemos a convertirlas en tipo factor:
+```{r}
+df$Title = as.factor(df$Title)
+df$Release_date = as.factor(df$Release_date)
+df$Summary = as.factor(df$Summary)
+df$Writer_1 = as.factor(df$Writer_1)
+df$Writer_2 = as.factor(df$Writer_2)
+df$Star_1 = as.factor(df$Star_1)
+df$Star_2 = as.factor(df$Star_2)
+df$Star_3 = as.factor(df$Star_3)
+df$Director = as.factor(df$Director)
+
+glimpse(df)
+```
+
+Ahora que los tipos de variable son los necesitamos para trabajar, vamos a verificar la existencia o no de datos perdidos:
+```{r}
+any(is.na(df))
+```
+
+## Análisis univariado de variables
+
+### Variables numéricas
+
+Para el análisis de variables cuantitativas hemos elegido trabajar con Rating, Votes, US_Viewers.
+
+Comenzamos con el Rating:
+```{r}
+df %>% summarise(Rating_promedio=mean(Rating),Rating_mediana=median(Rating))
+df %>% summarise(Desvío_estandar_rating=sd(Rating),Coeficiente_variación_rating=sd(Rating)/mean(Rating),Rango_intercuartílico_rating=IQR(Rating))
+df %>% summarise(Cuartiles_rating=quantile(Rating))
+```
+
+Con respecto a los Votos:
+
+```{r}
+df %>% summarise(Votos_promedio=mean(Votes),Votos_mediana=median(Votes))
+df %>% summarise(Desvío_estandar_votos=sd(Votes),Coeficiente_variación_votos=sd(Votes)/mean(Votes),Rango_intercuartílico_votos=IQR(Votes))
+df %>% summarise(Cuartiles_votos=quantile(Votes))
+```
+
+Por último, para US_Viewers:
+
+```{r}
+df %>% summarise(Viewers_promedio=mean(US_Viewers),Viewers_mediana=median(US_Viewers))
+df %>% summarise(Desvío_estandar_Viewers=sd(US_Viewers),Coeficiente_variación_viewers=sd(US_Viewers)/mean(US_Viewers),Rango_intercuartílico_viewers=IQR(US_Viewers))
+df %>% summarise(Cuartiles_viewers=quantile(US_Viewers))
+```
+
+Ahora pasaremos a realizar la visualización de las variables Rating y Viewers.
+
+Rating:
+```{r}
+df %>% ggplot()+geom_histogram(aes(x=Rating))
+df %>% ggplot()+geom_density(aes(x=Rating))
+df %>% ggplot()+geom_boxplot(aes(x=Rating))
+```
+
+Viewers:
+```{r}
+df %>% ggplot()+geom_histogram(aes(x=US_Viewers))
+df %>% ggplot()+geom_density(aes(x=US_Viewers))
+df %>% ggplot()+geom_boxplot(aes(x=US_Viewers))
+```
+
+### Variable categórica
+
+Para el análisis de las variables categóricas hemos decidido trabajar con los datos de Director y Stars.
+
+Antes de comenzar, debemos mencionar que las variables Star_1, Star_2 y Star_3 indican los actores que protagonizaron dicho episodio ordenados por cantidad de apariciones. Es por este motivo que decimos generar una nueva variable que contenga dichos datos ya que para un mismo episodio no se repetirá el dato de aparición de un actor y esto nos permitirá analizar qué actores aparecieron más veces, dato que no es posible obtener analizando por separado las variables Star_1 o Star_2 o Star_3.
+
+Procedemos a crear la variable Star:
+```{r}
+df2 = df$Star_1
+names(df2$Star_1) = "Star"
+
+df3 = df$Star_2
+names(df3$Star_2) = "Star"
+```
+
+Para la variable director:
+```{r}
+
+df %>% count(Director) %>% mutate(prop=n/sum(n))
+```
+
