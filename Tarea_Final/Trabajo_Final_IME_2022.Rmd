@@ -1,0 +1,269 @@
+---
+title: "Trabajo_final"
+output: html_document
+date: "2022-12-02"
+---
+
+## CARGAMOS LIBRERÍAS
+
+```{r}
+library(here)
+library(tidyverse)
+library(tidymodels)
+library(mlbench)
+library(rpart.plot)
+library(vip)
+library(srvyr)
+library(ranger)
+```
+## CARGA Y LIMPIEZA DE DATOS
+
+```{r setup, include=FALSE}
+
+dt <- read_delim(here('Tarea_Final','marketing_campaign.csv'),delim = "\t", escape_double = FALSE,trim_ws = TRUE)
+
+#Creo variable edad
+dt=dt%>% mutate(age=floor(2022 - Year_Birth))
+
+#Análisis de NA
+#Hay?
+any(is.na(dt))
+#Dónde?
+sapply(dt, function(x) sum(is.na(x)))
+#Qué peso tienen?
+mean(is.na(dt$Income))
+
+#Filtramos los datos NA y pasamos la variable
+dt = dt %>% filter(is.na(Income)==FALSE) %>% mutate(Response=as.factor(Response),
+                                                    Education=as.factor(Education),
+                                                    Marital_Status=as.factor(Marital_Status),
+                                                    Complain=as.factor(Complain),
+                                                    Dt_Customer=as.Date(Dt_Customer))
+```
+
+## Descripción de Variables
+
+Esta base de datos tiene 18 variables con 73 observaciones. Los tipos de variables que se encuentran son: interger, character y double. Así vemos que la base de datos cumple con los requisitos solicitados para su análisis.
+
+\begin{table}[h!]
+\centering
+\begin{tabular}{||p{2.8 cm}|p{3.5 cm}|p{8 cm}||}
+ \hline
+ \textbf{Variable} & \textbf{Tipo} & \textbf{Descripción}  \\ 
+ \hline\hline
+  Season & Categórica ordinal & Número de temporada \\
+  \hline
+  Episode & Categórica ordinal & Número de episodio \\
+  \hline
+  Title & Categórica nominal & Título del episodio \\
+  \hline
+  Release\_date & Categórica nominal & Fecha de lanzamiento del episodio \\
+  \hline
+  Rating & numérica continua & Rating obtenido en el sitio IMDB \\
+  \hline
+  Votes & numérica continua & Cantidad de votos \\
+  \hline
+  Summary & categórica nominal & Resumen del capítulo \\
+  \hline
+  Writer\_1  & categórica nominal & Primer escritor relacionado al capítulo \\
+  \hline
+  Writer\_ 2 & categórica nominal & Segundo escritor relacionado al capítulo \\
+  \hline
+  Star\_1 & categórica nominal & Primer actor relacionado al capítulo \\
+  \hline
+  Star\_2 & categórica nominal & Segundo actor relacionado al capítulo \\
+  \hline
+  Star\_3 & categórica nominal & Tercer actor relacionado al capítulo \\
+  \hline
+  User\_reviews & numérica continua & Cantidad de usuarios que hicieron reseñas del capítulo \\
+  \hline
+  Critics\_reviews & Numérica continua & Cantidad de críticos que hicieron reseñas del capítulo \\
+  \hline
+  US\_Viewers & Numérica continua & Cantidad de visualizaciones en Estados Unidos \\
+  \hline
+  Duration & Numérica continua & Duración en minutos del capítulo \\
+  \hline
+  Director & Categórica nominal & Director del capítulo \\
+  \hline
+  Budget\_estimate & Numérica continua & Estimado del presupuesto del capítulo \\
+  \hline
+ \end{tabular}
+\caption{\label{tab:VAR1}Descripción de variables}
+\end{table} 
+
+
+## EDA
+
+## BOX PLOT DE INGRESOS Y GRAF DE BARRAS DE PROMEDIO DE CONSUMOS
+
+
+```{r}
+
+dt %>% summarise(Prom_Imp_Vino=mean(MntWines),Prom_Imp_Frutas=mean(MntFruits),Prom_Imp_Carne=mean(MntMeatProducts),Prom_Imp_Pescado=mean(MntFishProducts),Prom_Imp_Dulces=mean(MntSweetProducts))
+
+
+df_bxplt=as_tibble(bind_rows(tibble(tipo="Vino",cantidad=dt$MntWines),tibble(tipo="Carne",cantidad=dt$MntMeatProducts),tibble(tipo="Frutas",cantidad=dt$MntFruits),tibble(tipo="Pescado",cantidad=dt$MntFishProducts),tibble(tipo="Dulces",cantidad=dt$MntSweetProducts)))
+
+#df_bxplt= df_bxplt %>% mutate(tipo=as.factor(tipo),cantidad=as.double(cantidad))
+
+
+df_bxplt%>%arrange(tipo,cantidad) %>% ggplot()+geom_boxplot(aes(x=cantidad)) +facet_wrap(~tipo)
+
+```
+## ANALISIS DE LA EDAD
+
+
+
+```{r}
+
+dt %>% ggplot()+geom_density(aes(x=age))+labs(title="Diagrama de densidad",)+xlab("Edad de los clientes (en años)")+ylab("")+theme_bw()+theme(plot.title=element_text(hjust=0.5))
+
+dt %>% ggplot() + geom_boxplot(aes(x=age)) + facet_wrap(~Education)
+
+
+dt %>% summarise(media = mean(age),
+              mediana = median(age),
+              desv_est = sd(age),
+              Coef_Var = sd(age)/mean(age)
+              )
+
+```
+
+## CANT DE CLIENTES
+
+
+```{r}
+
+dt %>%summarize(Porc_Camp_1=(sum(AcceptedCmp1)/n())*100,Porc_Camp_2=(sum(AcceptedCmp2)/n())*100,Porc_Camp_3=(sum(AcceptedCmp3)/n())*100,Porc_Camp_4=(sum(AcceptedCmp4)/n())*100,Porc_Camp_5=(sum(AcceptedCmp5)/n())*100)
+
+```
+
+
+
+```{r}
+#Saco NA
+dt_NA=na.omit(dt)
+#Determino valores para el tamaño de la muestra
+N=nrow(dt_NA)
+n=trunc(0.25*N)
+#Creo la variable tasa de muestreo
+dt_NA=mutate(dt_NA,f=n/N)
+#Genero la muestra
+incluidas=sample(1:N,size=n,replace=FALSE)
+muestra = dt_NA %>% slice(incluidas)
+
+#Genero las estimaciones puntuales y sus medidas de variación: SE, CI
+design = muestra %>% as_survey_design(fpc=f)
+valores = design %>% summarise(prom_Income=survey_mean(Income,vartype = c("se","ci"),level=0.95),
+prom_age=survey_mean(age,vartype = c("se","ci"),level=0.95),prop_Complain=survey_mean(Complain,vartype = c("se","ci"),level=0.95),total_Complain=survey_total(Complain,vartype=c("se","ci"),level=0.95))
+
+#Calculo los márgenes de error
+moe_Income = 1.96*valores$prom_Income_se
+moe_age = 1.96*valores$prom_age_se
+moe_Complain = 1.96*valores$prop_Complain_se
+moe_Complain_tot = 1.96*valores$total_Complain_se
+
+#Calculo los valores reales
+reales = dt_NA %>% summarise(mean_Income=mean(Income),mean_age=mean(age),prop_Complain=mean(Complain),total_Complain=sum(Complain))
+#Creo vector para ver si son buenos o malos
+buena=c(ifelse(reales$mean_Income>=valores$prom_Income_low & reales$mean_Income <= valores$prom_Income_upp, 'SI', 'NO'), ifelse(reales$mean_age >= valores$prom_age_low & reales$mean_age <= valores$prom_age_upp, 'SI', 'NO'), ifelse(reales$prop_Complain >= valores$prop_Complain_low & reales$prop_Complain <= valores$prop_Complain_upp, 'SI', 'NO'), ifelse(reales$total_Complain >= valores$total_Complain_low & reales$total_Complain <= valores$total_Complain_upp,'SI','NO'))
+
+#Creo una base de datos con la información
+base_grafico = tibble(tipo=c("Media de Ingresos","Media de Edad","Proporción de reclamos","Total de reclamos"),est=c(valores$prom_Income,valores$prom_age,valores$prop_Complain,valores$total_Complain),LI=c(valores$prom_Income_low,valores$prom_age_low,valores$prop_Complain_low,valores$total_Complain_low),LS=c(valores$prom_Income_upp,valores$prom_age_upp,valores$prop_Complain_upp,valores$total_Complain_upp),real=c(reales$mean_Income,reales$mean_age,reales$prop_Complain,reales$total_Complain),buena_o_no=buena,moe=c(moe_Income,moe_age,moe_Complain,moe_Complain_tot))
+
+#Grafico el intervalo de confianza y el valor del estimador
+ggplot(base_grafico,aes(x=tipo,y=real))+geom_point(color="red",size=3)+geom_pointrange(aes(y=est,x=tipo,ymin=LI,ymax=LS))+facet_wrap(~tipo,scales="free")+labs(x="", y="")+scale_x_discrete(labels = c("","", "", ""))
+names(base_grafico)=c("Tipo de estimación puntual y variable","Estimación puntual","Límite inferior de IC","Límite superior de IC","Real","¿Es buena la estimación?","Margen de Error")
+options(scipen=999)
+base_grafico
+```
+
+
+## Aprendizaje Automático Supervisado
+
+
+```{r}
+df_modelo=dt %>% filter(is.na(Income)==FALSE)
+df_modelo
+set.seed(1234)
+df_split = initial_split(df_modelo,prop=0.75)
+df_split
+
+```
+```{r}
+# datos de entrenamiento
+df_train = training(df_split)
+# datos de test
+df_test = testing(df_split)
+
+```
+
+
+```{r}
+
+set.seed(1234)
+df_rf = rand_forest(trees = 1000) %>%
+  set_engine('ranger') %>%
+  set_mode('classification') %>% 
+  fit(Response~., data=df_train)
+df_rf
+
+```
+
+```{r}
+
+resultados_rf_train = df_train %>% select(Response) %>%  
+  bind_cols(predict(df_rf, df_train)) %>% 
+  rename(.pred_tree=.pred_class)
+resultados_rf_train%>% head()
+
+```
+
+```{r}
+
+metrics(resultados_rf_train, truth = Response, estimate = .pred_tree)
+
+```
+
+Calculamos las métricas para los datos de entrenamiento
+
+```{r}
+cm_train = conf_mat(resultados_rf_train, truth = Response, estimate = .pred_tree)
+cm_train
+```
+
+Visualizamos la matriz de confusión
+
+```{r}
+autoplot(cm_train, type = "heatmap")
+```
+
+
+```{r}
+resultados_rf_test = df_test %>% select(Response) %>%  
+  bind_cols(predict(df_rf, df_test)) %>% 
+  rename(.pred_tree=.pred_class)
+resultados_rf_test %>% head()
+```
+
+
+
+```{r}
+
+metrics(resultados_rf_test, truth = Response, estimate = .pred_tree)
+```
+
+```{r}
+cm_test = conf_mat(resultados_rf_test, truth = Response, estimate = .pred_tree)
+cm_test
+```
+
+Visualizamos la matriz de confusión
+
+```{r}
+
+autoplot(cm_test, type = "heatmap")
+
+```
+
+

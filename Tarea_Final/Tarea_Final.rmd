@@ -1,0 +1,26 @@
+---
+title: "Tarea_Final"
+author: "Germán Miranda"
+date: "2022-12-01"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(tidyverse)
+library(here)
+```
+
+
+```{r}
+
+dt=read_delim(here('Tarea_Final','marketing_campaign.csv'),delim ="\t",escape_double = FALSE, trim_ws = TRUE)
+
+
+```
+
+
