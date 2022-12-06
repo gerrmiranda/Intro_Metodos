@@ -1,0 +1,176 @@
+---
+title: "Estimación e Intervalos de confianza para proporciones"
+author: "Introducción a los métodos estadísticos"
+date: "noviembre 2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Carga paquetes
+
+```{r, warning=FALSE, message=FALSE}
+library(tidyverse)
+```
+
+# carga el dataset
+
+```{r, warning=FALSE, message=FALSE}
+pob = read_csv('hogares_mvd.csv') 
+```
+
+La población (ficticia) son los hogares de Montevideo. El objetivo es seleccionar muestras aleatorias con reposición (m.a.s c/r) para estimar  parámetros de la población, en paricular proporciones (e.g. proporción de mujeres, proporción de pobreza, etc.)
+
+
+## Estimación de proporciones
+
+Definimos una variable binaria (dummy o bernoulli) que indique si la persona es mujer o no.
+
+```{r}
+pob = pob %>% mutate(mujer=case_when(sexo=='M' ~ 1, sexo=='H' ~0))
+```
+
+```{r}
+pob %>% count(mujer) %>% mutate(prop=n/sum(n))
+```
+
+Seleccionamos una muestra aleatoria de tamaño $n=200$
+
+
+```{r}
+n=200
+N=nrow(pob)
+incluidas=sample(1:N,    #ETIQUETAS
+                 size=n, # TAMAÑO DE MUESTRA
+                 replace=TRUE # con remplazo
+                 )
+
+muestra = pob %>% slice(incluidas) 
+#estimación puntual es
+p_est = muestra %>% summarise(prom=mean(mujer)) %>% pull()
+p_est
+```
+
+Computamos el margen de error (moe) al 95%
+
+```{r}
+1.96*sqrt(p_est*(1-p_est)/n)
+```
+
+Corroboramos que se cumpla  el TCL
+
+```{r, warning=FALSE, message=FALSE}
+#simulamos 5000 muestras y guardamos las estimaciones
+
+R = 1000 # cantidad de simulaciones
+
+sim = tibble(sim=1:R, est=0) # creamos un tible para guardar las estimaciones 
+
+for ( i in 1: R)
+  {
+  
+sim$est[i]= pob  %>% slice(sample(1:N,size=n, replace=TRUE)) %>% summarise(prop=mean(mujer)) %>% pull()
+
+estimacion =  pob  %>% slice(sample(1:N,size=n, replace=TRUE)) %>%    
+                       summarise(prom=mean(mujer)) %>% pull()
+sim = sim%>% rows_update(tibble(sim=i,est=estimacion))
+ }
+```
+
+Visualizamos
+
+```{r}
+ggplot (sim, aes(x=est,y=..density..))+
+  geom_histogram(fill='purple', color='white', bins=R**.5,alpha=0.3)+
+  geom_density(adjust=2, fill='purple', alpha=0.5) +
+  theme_bw()
+```
+
+
+# Simulacion de intervalos de confianza para una proporción
+ 
+
+```{r, message=FALSE}
+R=50
+sim_ic = tibble(sim=1:R, est=0,LI=0,LS=0)
+
+for ( i in 1: R)
+  {
+  muestra = pob  %>% slice(sample(1:N,size=n, replace=TRUE))
+  est_puntual= muestra %>% 
+              summarise(prom=mean(mujer)) %>% pull()
+  LI_puntual= muestra %>% 
+              summarise(LI=mean(mujer)-1.96*sd(mujer)/sqrt(n)) %>% pull()
+  LS_puntual = muestra %>%
+               summarise(LS=mean(mujer)+1.96*sd(mujer)/sqrt(n)) %>% pull()
+sim_ic = sim_ic  %>%  rows_update(tibble(sim=i,
+                                         est=est_puntual,
+                                         LI=LI_puntual, LS=LS_puntual))
+ }
+```
+
+
+
+
+```{r}
+sim_ic= sim_ic %>% mutate(tipo=ifelse(mean(pob$mujer)>=LI & mean(pob$mujer) <=LS,'buena','mala')) 
+ggplot(sim_ic,aes(x=sim,y=est, color=tipo))+geom_point()+
+  geom_linerange(aes(ymin=LI,ymax=LS))
+```
+
+## Paqute srvyr
+
+Seleccionamos una muestra aleatoria con reposición
+
+
+```{r}
+n=200
+N=nrow(pob)
+incluidas=sample(1:N,    #ETIQUETAS
+                 size=n, # TAMAÑO DE MUESTRA
+                 replace=TRUE # con remplazo
+                 )
+
+muestra = pob %>% slice(incluidas) 
+```
+
+Definimos como fue seleccionada la muestra. A la estrategia de selección se le denomina **diseño muestral**
+ 
+```{r}
+library(srvyr)
+
+design = muestra %>% as_survey_design()
+```
+ 
+ 
+```{r}
+design %>% summarise(prom_ingreso=survey_mean(ingreso),
+                     prop_mujeres=survey_mean(mujer))
+```
+ 
+Corroboramos los cálculos realizados por la función
+ 
+ 
+```{r}
+# ingreso promedio
+muestra %>% summarise(prom=mean(ingreso), SE_ingreso=sd(ingreso)/sqrt(n))
+```
+ 
+```{r}
+# ingreso promedio
+muestra %>% summarise(prop=mean(mujer), SE_ingreso=sd(mujer)/sqrt(n))
+```
+Idem, pero usando para el computo de la desviación de la variable $\hat p(1-\hat p)$
+
+```{r}
+muestra %>% summarise(prop=mean(mujer), SE_ingreso=sqrt(prop*(1-prop)/n))
+```
+
+
+
+
+ 

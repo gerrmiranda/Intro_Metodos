@@ -17,10 +17,12 @@ Para la realización del siguiente trabajo, hemos elegido emplear un dataset sob
 
 ```{r message=FALSE, warning=FALSE}
 #Primero seteamos el directorio de trabajo
-setwd("D:/Users/MARTIN BOTTA/Desktop")
+library(here)
+
+
 
 #Ahora cargamos el archivo
-df = read.csv("GOT_episodes_v4.csv")
+df = read.csv(here("Tareas","GOT_episodes_v4.csv"))
 
 #Seteamos las bibliotecas que emplearemos
 library(tidyverse)
@@ -52,15 +54,17 @@ De esta forma, podemos clasificar cada tipo de variable en numérica o categóri
   
 Al verificar que existen variables de tipo character, procedemos a convertirlas en tipo factor:
 ```{r}
-df$Title = as.factor(df$Title)
-df$Release_date = as.factor(df$Release_date)
-df$Summary = as.factor(df$Summary)
-df$Writer_1 = as.factor(df$Writer_1)
-df$Writer_2 = as.factor(df$Writer_2)
-df$Star_1 = as.factor(df$Star_1)
-df$Star_2 = as.factor(df$Star_2)
-df$Star_3 = as.factor(df$Star_3)
-df$Director = as.factor(df$Director)
+df %>% mutate (Title=as.factor(Title),
+               Season=as.factor(Season),
+               Episode=as.factor(Episode),
+               Summary=as.factor(Summary),
+               Writer_1=as.factor(Writer_1),
+               Writer_2=as.factor(Writer_2),
+               Star_1 = as.factor(Star_1),
+               Star_2 = as.factor(Star_2),
+               Star_3 = as.factor(Star_3),
+               Director = as.factor(Director)
+               )
 
 glimpse(df)
 ```
@@ -135,4 +139,55 @@ Para la variable director:
 
 df %>% count(Director) %>% mutate(prop=n/sum(n))
 ```
+
+
+##Tabla de Contingencias
+
+Para generar la tabla de contigencias, elegimos como variables categóticas a la Temporada y a los actores que participan en cada episodio (variable "Star").
+
+
+```{r}
+
+X=df$Director
+Y=df$Season
+
+table(X,Y)
+
+```
+
+
+Queremos ver luego como se comporta la variable numérica de rating en base a la variable categótica de Temporada (Season) que utilizamos en el punto anterior.
+
+```{r}
+
+df %>% 
+  group_by(Season) %>%
+    summarise(media = mean(Rating),
+              mediana = median(Rating),
+              desv_est = sd(Rating),
+              Coef_Var = sd(Rating)/mean(Rating)
+              )
+
+```
+
+
+
+
+```{r}
+
+df = df %>% mutate(Season=factor(Season))
+
+ggplot(data=df) + geom_boxplot(aes(x=Season,y=Rating))
+
+ggplot(data=df) + geom_density(aes(x=Rating,fill=Season))
+
+```
+
+
+
+```{r}
+df %>% ggplot(aes(x=US_Viewers,y=Critics_reviews)) + geom_point()+ geom_smooth(method = "lm")
+
+```
+
 

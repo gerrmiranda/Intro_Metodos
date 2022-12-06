@@ -1,0 +1,306 @@
+---
+title: "Trabajo EDA"
+author: "Grupo 1"
+date: "2022-09-25"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Análisis exploratorio de datos
+
+## Explorando la base de datos
+
+Para la realización del siguiente trabajo, hemos elegido emplear un dataset sobre episodios de la serie televisiva "Game of Thrones" que hemos extrído desde la siguiente dirección: https://www.kaggle.com/datasets/rezaghari/game-of-thrones . Esta base de datos refiere a información extraída principalmente del sitio IMBD a partir de webscrapping.
+
+```{r, message=FALSE, warning=FALSE}
+#Seteamos las bibliotecas que emplearemos
+library(tidyverse)
+library(dplyr)
+library(janitor)
+library(kableExtra)
+library(here)
+
+#Utilizamos la libreria here para localizar el directorio de trabajo y leer el archivo
+
+df = read.csv(here("Tareas","GOT_episodes_v4.csv"))
+
+#Luego, damos un vistazo a la estructura de los datos
+glimpse(df)
+```
+
+## Descripción de Variables
+
+Esta base de datos tiene 18 variables con 73 observaciones. Los tipos de variables que se encuentran son: interger, character y double. Así vemos que la base de datos cumple con los requisitos solicitados para su análisis.
+
+
+\begin{table}[h!]
+\centering
+\begin{tabular}{||p{2.8 cm}|p{3.5 cm}|p{8 cm}||}
+ \hline
+ \textbf{Variable} & \textbf{Tipo} & \textbf{Descripción}  \\ 
+ \hline\hline
+  Season & Categórica ordinal & Número de temporada \\
+  \hline
+  Episode & Categórica ordinal & Número de episodio \\
+  \hline
+  Title & Categórica nominal & Título del episodio \\
+  \hline
+  Release\_date & Categórica nominal & Fecha de lanzamiento del episodio \\
+  \hline
+  Rating & numérica continua & Rating obtenido en el sitio IMDB \\
+  \hline
+  Votes & numérica continua & Cantidad de votos \\
+  \hline
+  Summary & categórica nominal & Resumen del capítulo \\
+  \hline
+  Writer\_1  & categórica nominal & Primer escritor relacionado al capítulo \\
+  \hline
+  Writer\_ 2 & categórica nominal & Segundo escritor relacionado al capítulo \\
+  \hline
+  Star\_1 & categórica nominal & Primer actor relacionado al capítulo \\
+  \hline
+  Star\_2 & categórica nominal & Segundo actor relacionado al capítulo \\
+  \hline
+  Star\_3 & categórica nominal & Tercer actor relacionado al capítulo \\
+  \hline
+  User\_reviews & numérica continua & Cantidad de usuarios que hicieron review del capítulo \\
+  \hline
+  Critics\_reviews & Numérica continua & Cantidad de críticas recibidas para el capítulo \\
+  \hline
+  US\_Viewers & Numérica continua & Cantidad de visualizaciones en Estados Unidos \\
+  \hline
+  Duration & Numérica continua & Duración en minutos del capítulo \\
+  \hline
+  Director & Categórica nominal & Director del capítulo \\
+  \hline
+  Budget\_estimate & Numérica continua & Estimado del presupuesto del capítulo \\
+  \hline
+ \end{tabular}
+\caption{\label{tab:VAR1}Descripción de variables}
+\end{table} 
+
+
+
+\newpage
+  
+Al verificar que existen variables de tipo character, procedemos a convertirlas en tipo factor:
+
+```{r}
+
+df = df %>%  mutate (Episode = as.factor(Episode),
+                     Title = as.factor(Title),
+                     Release_date = as.factor(Release_date),
+                     Season= as.factor(Season),
+                     Summary= as.factor(Summary),
+                     Writer_1= as.factor(Writer_1),
+                     Writer_2= as.factor(Writer_2),
+                     Star_1 = as.factor(Star_1),
+                     Star_2 = as.factor(Star_2),
+                     Star_3 = as.factor(Star_3),
+                     Director = as.factor(Director)
+                     )
+
+glimpse(df)
+```
+
+Ahora que los tipos de variable son los necesitamos para trabajar, vamos a verificar la existencia o no de datos perdidos:
+
+```{r}
+any(is.na(df))
+```
+
+\newpage
+
+## Análisis univariado de variables
+
+### Variables numéricas
+
+Para el análisis de variables cuantitativas hemos elegido trabajar con Rating, Votes, US_Viewers.
+
+Comenzamos con el Rating:
+```{r}
+df %>% summarise(Rating_promedio=mean(Rating),Rating_mediana=median(Rating))
+df %>% summarise(Desvío_estandar_rating=sd(Rating),Coeficiente_variación_rating=sd(Rating)/mean(Rating),Rango_intercuartílico_rating=IQR(Rating))
+df %>% summarise(Cuartiles_rating=quantile(Rating))
+```
+
+A partir de los datos de centro, se observa que se trata de una serie que, en general, tiene un buen rating considerando que se trata de una escala del uno al diez. Asimimos, se verifica que el promedio y la mediana son similares. No se calculó la moda debido a que se trata de una variable numérica continua, por lo que carece de sentido.
+Observando los datos de dispersión, se comprueba que no se trata de picos, sino que la mayoría de los episodios tiene ratings por encima de 8, por lo que podemos hablar de se trataría de una serie bien puntuada. Esto se complementa con los datos de posición, ya que más del 50 % de los episodios tiene puntuación entre 8,7 y 9,4.
+
+
+Con respecto a los Votos, obtuvimos los siguientes datos:
+
+```{r}
+df %>% summarise(Votos_promedio=mean(Votes),Votos_mediana=median(Votes))
+df %>% summarise(Desvío_estandar_votos=sd(Votes),Coeficiente_variación_votos=sd(Votes)/mean(Votes),Rango_intercuartílico_votos=IQR(Votes))
+df %>% summarise(Cuartiles_votos=quantile(Votes))
+```
+
+Observamos que la media y la mediana no se corresponden, por lo que no se ve una distribución de los votos equitativa entre los episodios. Asimismo, la dispersión es relativamente alta en función de los valores trabajados, lo que se verifica con el coeficiente de variación. Con estos datos ya es posible visualizar que el máximo es un posible dato atípico y es esperable que haya más. Por último, realizamos la misma observación que en el punto anterior para la moda.
+
+
+Por último, para US_Viewers:
+
+```{r}
+df %>% summarise(Viewers_promedio=mean(US_Viewers),Viewers_mediana=median(US_Viewers))
+df %>% summarise(Desvío_estandar_Viewers=sd(US_Viewers),Coeficiente_variación_viewers=sd(US_Viewers)/mean(US_Viewers),Rango_intercuartílico_viewers=IQR(US_Viewers))
+df %>% summarise(Cuartiles_viewers=quantile(US_Viewers))
+```
+
+Se observa que el promedio y la mediana son similares, pero las medidas de dispersión refieren a que los datos no siguen el mismo patrón que el observado para el Rating. Por último, realizamos la misma observación que en el punto anterior para la moda.
+
+
+Ahora pasaremos a realizar la visualización de las variables Rating y Viewers.
+
+Rating:
+```{r}
+df %>% ggplot()+geom_histogram(aes(x=Rating))+labs(title="Histograma",)+ylab("")+theme_bw()+theme(plot.title=element_text(hjust=0.5))
+df %>% ggplot()+geom_density(aes(x=Rating))+labs(title="Diagrama de densidad",)+ylab("")+theme_bw()+theme(plot.title=element_text(hjust=0.5))
+df %>% ggplot()+geom_boxplot(aes(x=Rating))+labs(title="Boxplot",)+ylab("")+theme_bw()+theme(plot.title=element_text(hjust=0.5))
+```
+
+Para la variable Rating se observa un comportamiento bastante simétrico, lo que se refuerza con la similitud entre media y mediana. El boxplot revela la existencia de datos atípicos, vinculados a capítulos que tuvieron bajo rating por una baja aceptación del público. En la base de datos se observa que se trata de capítulos de la última temporada, la que fue altamente criticada de forma negativa por el público, vinculado a la alta expectativa del final de la serie.
+
+
+Viewers:
+```{r}
+df %>% ggplot()+geom_histogram(aes(x=US_Viewers))+labs(title="Histograma",)+xlab("Cantidad de televidentes estadounidenses (en millones)")+ylab("")+theme_bw()+theme(plot.title=element_text(hjust=0.5))
+df %>% ggplot()+geom_density(aes(x=US_Viewers))+labs(title="Diagrama de densidad",)+xlab("Cantidad de televidentes estadounidenses (en millones)")+ylab("")+theme_bw()+theme(plot.title=element_text(hjust=0.5))
+df %>% ggplot()+geom_boxplot(aes(x=US_Viewers))+labs(title="Boxplot",)+ylab("")+xlab("Cantidad de televidentes estadounidenses (en millones")+theme_bw()+theme(plot.title=element_text(hjust=0.5))
+```
+
+En relación a la variable Viewers se observa una distribución con una leve asimetría negativa. Por otra parte, el boxplot no revela datos atípicos a pesar de que existen varios valores relativamente grandes con respecto a la media.
+
+
+### Variables categóricas
+
+Para el análisis de las variables categóricas hemos decidido trabajar con los datos de Director y Stars.
+
+Antes de comenzar, debemos mencionar que las variables Star_1, Star_2 y Star_3 indican los actores que protagonizaron dicho episodio ordenados por cantidad de apariciones. Es por este motivo que decimos generar una nueva variable que contenga dichos datos ya que para un mismo episodio no se repetirá el dato de aparición de un actor y esto nos permitirá analizar qué actores aparecieron más veces, dato que no es posible obtener analizando por separado las variables Star_1 o Star_2 o Star_3.
+
+
+Procedemos a crear la variable Star en un nuevo dataframe y analizarla:
+```{r}
+Star = c(df$Star_1,df$Star_2,df$Star_3)
+
+Star = as.data.frame(Star)
+
+tabla0 = Star %>% count(Star) %>% mutate(prop=n/(sum(n)/3))
+
+kable(tabla0)
+
+#Moda
+names(which.max(table(Star)))
+
+tabla_star = Star %>% count(Star) %>% mutate(prop=n/73)
+tabla_star %>% ggplot() + geom_col(aes(x=n,y=reorder(Star,n))) +labs(title="Gráfico de barras",)+ylab("")+xlab("Cantidad de capítulos protagonizados")+theme_bw()+theme(plot.title=element_text(hjust=0.5))
+```
+
+A partir del análisis de la variable Star, es posible visualizar que el actor que participó de la mayor parte de los capítulos fue Peter Dinklage con una participación de un 79,5% de los mismos, siendo seguido por Nikolaj Coster-Waldau y Lena Headey. Por último, lo que podemos afirmar con seguridad es la alta participación de estos personajes, no así de los restantes por la información contenida en la base de datos y la forma en que fue construída la variable.
+
+
+Para la variable director:
+```{r}
+
+tabla1 = df %>% count(Director) %>% mutate(prop=n/sum(n)) %>% adorn_totals()
+
+kable(tabla1)
+
+#Moda
+names(which.max(table(df$Director)))
+
+tabla_director = df %>% count(Director) %>% mutate(prop=n/sum(n))
+tabla_director %>% ggplot() + geom_col(aes(x=n,y=reorder(Director,n))) +labs(title="Gráfico de barras",)+ylab("")+xlab("Cantidad de capítulos dirigidos")+theme_bw()+theme(plot.title=element_text(hjust=0.5))
+
+```
+
+En el análisis de la variable Director observamos que el que participó de la producción de la mayor cantidad de capítulos fue David Nutter. También es posible observar que no existió un director que participará de la producción de muchos capítulos, sino que muchos directores realizaron pocos capítulos.
+
+## Análisis multivariado
+
+### Tabla de Contingencias
+
+Para generar la tabla de contigencias, elegimos como variables categóricas a la variable Season y a los actores que participan en cada episodio (variable "Star").
+
+```{r}
+
+X=df$Director
+Y=df$Season
+
+tabla2 = table(X,Y) %>% addmargins()
+
+kable(tabla2)
+
+```
+
+Queremos ver luego cómo se comporta la variable numérica de rating en base a la variable categórica de Temporada (Season) que utilizamos en el punto anterior.
+
+```{r}
+df %>% 
+  group_by(Season) %>%
+    summarise(media = mean(Rating),
+              mediana = median(Rating),
+              desv_est = sd(Rating),
+              Coef_Var = sd(Rating)/mean(Rating)
+              )
+
+```
+
+Luego, procedemos a realizar un boxplot y un density plot de las variables elegidas en el punto anterior:
+
+```{r}
+df %>% ggplot() + geom_boxplot(aes(x=Season,y=Rating))+labs(title="Boxplot",)+xlab("Temporada")+theme_bw()+theme(plot.title=element_text(hjust=0.5))
+
+df %>% ggplot() + geom_density(aes(x=Rating,color=Season))+labs(title="Diagrama de densidad",)+ylab("")+theme_bw()+theme(plot.title=element_text(hjust=0.5))
+
+```
+
+Por otra parte, nos interesa conocer la distribución de los votos y de la cantidad de televidentes por temporada, por lo que procederemos a realizar dos boxplot:
+
+```{r}
+df %>% ggplot() + geom_boxplot(aes(x=Season,y=Votes))+labs(title="Boxplot",)+xlab("Temporada")+theme_bw()+theme(plot.title=element_text(hjust=0.5))
+
+df %>% ggplot() + geom_boxplot(aes(x=Season,y=US_Viewers))+labs(title="Boxplot",)+xlab("Temporada")+ylab("Cantidad de televidentes estadounidenses (en millones)")+theme_bw()+theme(plot.title=element_text(hjust=0.5))
+```
+
+
+En este punto calcularemos la correlación lineal entre las variables numéricas del dataset:
+
+```{r}
+cor(df %>% select(Rating,Votes,Users_reviews,Critics_reviews,US_Viewers,Duration))
+```
+
+Vemos que la variable Rating tiene correlación negativa con el resto de las variables, mientras que el resto de las variables tienen correlaciones positivas entre sí. En general, la mayoría de las correlación son moderadas, destacando Rating vs Users_reviews y US_Viewers vs Critics_reviews como fuertes.
+
+Vamos a analizar esta última correlación: US_Viewers vs Critics_reviews por tratarse de la relación con la mayor correlación lineal.
+
+```{r message=FALSE, warning=FALSE}
+
+lm(Critics_reviews~US_Viewers,df)
+
+df %>% ggplot(aes(x=US_Viewers,y=Critics_reviews)) + geom_point() + geom_smooth(method = "lm")+labs(title="Gráfico de dispersión",)+ylab("Cantidad de reseñas de críticos")+xlab("Cantidad de televidentes estadounidenses (en millones)")+theme_bw()+theme(plot.title=element_text(hjust=0.5))
+```
+
+Podemos hablar de que existe una posible relación lineal entre la cantidad de visualizaciones de la serie respecto a la cantidad de reviews realizadas por la crítica especializada sobre la serie. Tiene sentido debido a que a medida que la gente se interesaba más en mirar la serie, la crítica especializada se interesaba más en escribir reseñas sobre la misma, especialmente para hacer llegar su trabajo a dicho público.
+A partir del modelo lineal descrito, se observa que por cada millón de televidentes se incrementaba en casi cuatro la cantidad de reseñas y que el piso de reseñas por capítulo es de once.
+
+\newpage
+
+## Conclusiones
+
+Observamos que la serie, en general, tiene buena puntuación, sobre todo considerando que los capítulos tienen ratings por encima de los 8 puntos, excepto por capítulos de la última temporada. Así, la temporada cuatro es la mejor valorada, con capítulos, en general, con rating por encima de nueve, mientras que la temporada dos es la más homogénea en rating, debido a que la mayoría de los capítulos tienen rating alrededor de 8,8.
+
+A pesar de esto, la temporada 8 presenta capítulos con valores de rating muy por debajo a la media, con el valor mínimo de 4,1 para el final de la serie. Esto podría estar vinculado a expectativas no cumplidas por la serie de sus espectadores.
+
+Asimismo, si bien la cantidad de votos para las temporadas uno a siete se mantiene estable, para la temporada ocho se dispara. Entendemos que puede tratarse a estas expectativas no cumplidas por la serie, más que a un uso extensivo de la plataforma de donde se obtienen los datos. Esto último es un elemento a considerar debido a las fechas en que fueron producidos los capítulos, sin embargo nos inclinamos a pensar que esta última temporada no supo cumplir las demandas de los espectadores.
+
+También se observa un crecimiento de la cantidad de televidentes a medida que fueron pasando las diferentes temporadas, que entendemos se debe a la popularidad que fue ganando la serie en la medida que fue siendo publicitada y viralizada.
+
+Un elemento que nos llamó la atención es que existe una gran cantidad de directores, y que una misma temporada es dirigida por múltiples directores. En cantidad de capítulos, no llegarían a dirigir una temporada completa.
+
